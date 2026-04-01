@@ -14,9 +14,9 @@ export function AuthProvider({ children }) {
         .from('profiles')
         .select('*')
         .eq('id', authId)
-        .single();
+        .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching profile:', error);
         return null;
       }
