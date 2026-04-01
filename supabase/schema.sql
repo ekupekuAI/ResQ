@@ -18,6 +18,10 @@ CREATE POLICY "Anyone can check a society_code to join"
 ON public.societies FOR SELECT 
 USING (true);
 
+CREATE POLICY "Admins can create societies" 
+ON public.societies FOR INSERT 
+WITH CHECK (auth.uid() = admin_id);
+
 -- Create Profiles Table (extends auth.users)
 CREATE TABLE public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
