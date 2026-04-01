@@ -5,7 +5,7 @@ export const getSocietyByCode = async (code) => {
     .from('societies')
     .select('*')
     .eq('society_code', code)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('Society code not found:', error);

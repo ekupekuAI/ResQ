@@ -124,7 +124,7 @@ export function AuthProvider({ children }) {
       .update(updates)
       .eq('id', user.id)
       .select()
-      .single();
+      .maybeSingle();
       
     if (error) throw error;
     setUser(data);
