@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getFeed } from '../services/alerts';
-import { getSocietyById } from '../services/societies';
+import { getSocietyById, getSocietyMembers } from '../services/societies';
 import { Users, AlertTriangle, ShieldCheck, Activity, Search } from 'lucide-react';
 import EmergencyBadge from '../components/EmergencyBadge';
 
@@ -10,6 +10,8 @@ export default function AdminDashboard() {
   
   const [society, setSociety] = useState({});
   const [alerts, setAlerts] = useState([]);
+  const [members, setMembers] = useState([]);
+  const [view, setView] = useState('alerts'); // 'alerts' or 'members'
   const [filter, setFilter] = useState('all');
   const [loading, setLoading] = useState(true);
 
@@ -18,8 +20,11 @@ export default function AdminDashboard() {
       if (user?.society_id) {
         const socData = await getSocietyById(user.society_id);
         const feedData = await getFeed(user.society_id);
+        const memData = await getSocietyMembers(user.society_id);
+        
         if (socData) setSociety(socData);
         if (feedData) setAlerts(feedData.filter(i => i.feedType === 'alert'));
+        if (memData) setMembers(memData);
       }
       setLoading(false);
     }
@@ -41,38 +46,64 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-4 mb-8">
-        <StatCard icon={<Users />} label="Total Residents" value="--" color="text-blue-500" bg="bg-blue-500/10" />
+        <StatCard icon={<Users />} label="Total Members" value={members.length} color="text-blue-500" bg="bg-blue-500/10" />
         <StatCard icon={<AlertTriangle />} label="Total Alerts" value={alerts.length} color="text-red-500" bg="bg-red-500/10" />
         <StatCard icon={<ShieldCheck />} label="Resolved" value={alerts.filter(a => a.status === 'resolved').length} color="text-orange-500" bg="bg-orange-500/10" />
         <StatCard icon={<Activity />} label="Avg Response" value="--" color="text-green-500" bg="bg-green-500/10" />
       </div>
 
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-black tracking-tight">Recent Activity</h2>
-        <div className="bg-slate-200 dark:bg-slate-800 rounded-lg p-1 flex gap-1">
-          <button onClick={() => setFilter('all')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${filter === 'all' ? 'bg-white dark:bg-slate-700 shadow flex-1' : 'text-slate-500'}`}>All</button>
-          <button onClick={() => setFilter('active')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${filter === 'active' ? 'bg-white dark:bg-slate-700 shadow flex-1' : 'text-slate-500'}`}>Active</button>
-        </div>
+      <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-800 pb-2">
+        <button onClick={() => setView('alerts')} className={`text-sm font-bold px-4 py-2 rounded-lg transition-all ${view === 'alerts' ? 'bg-primary text-white shadow-md' : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>Alerts</button>
+        <button onClick={() => setView('members')} className={`text-sm font-bold px-4 py-2 rounded-lg transition-all ${view === 'members' ? 'bg-primary text-white shadow-md' : 'text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800'}`}>Members</button>
       </div>
 
-      <div className="space-y-3">
-        {alerts.filter(a => filter === 'all' || a.status === filter).map(alert => (
-          <div key={alert.id} className="bg-white dark:bg-[#1C1C1E] p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <EmergencyBadge type={alert.type} />
-                <span className="text-xs text-slate-400 font-medium">Flat {alert.flat}</span>
-              </div>
-              <p className="text-sm font-semibold truncate max-w-[200px]">{alert.description || 'No description'}</p>
-            </div>
-            <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${alert.status === 'active' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-              {alert.status}
+      {view === 'alerts' ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Recent Activity</h2>
+            <div className="bg-slate-200 dark:bg-slate-800 rounded-lg p-1 flex gap-1">
+              <button onClick={() => setFilter('all')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${filter === 'all' ? 'bg-white dark:bg-slate-700 shadow flex-1' : 'text-slate-500'}`}>All</button>
+              <button onClick={() => setFilter('active')} className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${filter === 'active' ? 'bg-white dark:bg-slate-700 shadow flex-1' : 'text-slate-500'}`}>Active</button>
             </div>
           </div>
-        ))}
+          
+          {alerts.filter(a => filter === 'all' || a.status === filter).map(alert => (
+            <div key={alert.id} className="bg-white dark:bg-[#1C1C1E] p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <EmergencyBadge type={alert.type} />
+                  <span className="text-xs text-slate-400 font-medium">Flat {alert.flat}</span>
+                </div>
+                <p className="text-sm font-semibold truncate max-w-[200px]">{alert.description || 'No description'}</p>
+              </div>
+              <div className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${alert.status === 'active' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                {alert.status}
+              </div>
+            </div>
+          ))}
 
-        {alerts.length === 0 && <p className="text-sm text-slate-400 text-center py-6">No alerts yet.</p>}
-      </div>
+          {alerts.length === 0 && <p className="text-sm text-slate-400 text-center py-6">No alerts yet.</p>}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Directory</h2>
+          {members.map(member => (
+            <div key={member.id} className="bg-white dark:bg-[#1C1C1E] p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
+              <div>
+                <span className="block font-bold text-slate-900 dark:text-white capitalize">{member.name || member.role}</span>
+                <span className="block text-xs text-slate-400 font-medium capitalize">{member.role}</span>
+              </div>
+              {member.role === 'resident' && (
+                <div className="text-right">
+                  <span className="block text-sm font-black text-primary">Flat {member.flat}</span>
+                  <span className="block text-[10px] font-bold uppercase text-slate-400">{member.floor} Floor</span>
+                </div>
+              )}
+            </div>
+          ))}
+          {members.length === 0 && <p className="text-sm text-slate-400 text-center py-6">No residents or guards have joined yet.</p>}
+        </div>
+      )}
     </div>
   );
 }

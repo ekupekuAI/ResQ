@@ -38,3 +38,18 @@ export const createSociety = async (name, address, code, adminId) => {
   if (error) throw error;
   return data;
 };
+
+export const getSocietyMembers = async (societyId) => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('society_id', societyId)
+    .neq('role', 'admin')
+    .order('flat', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching members:', error);
+    return [];
+  }
+  return data || [];
+};

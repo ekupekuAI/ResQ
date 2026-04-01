@@ -9,41 +9,54 @@ export function AuthProvider({ children }) {
 
   // Helper to fetch user profiles correctly
   const fetchProfile = async (authId) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', authId)
-      .single();
-    
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching profile:', error);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authId)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching profile:', error);
+        return null; // Don't throw, just return null so user gets assigned needsProfile
+      }
+      return data;
+    } catch (e) {
+      console.error('Exception fetching profile:', e);
       return null;
     }
-    return data;
   };
 
   useEffect(() => {
     let subscription;
     
     const initAuth = async () => {
-      // Get initial session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        setUser(profile || { id: session.user.id, role: 'resident', needsProfile: true });
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-
-      // Listen for auth changes
-      const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
         if (session?.user) {
           const profile = await fetchProfile(session.user.id);
           setUser(profile || { id: session.user.id, role: 'resident', needsProfile: true });
         } else {
           setUser(null);
+        }
+      } catch (e) {
+        console.error("Init auth failed:", e);
+      } finally {
+        setLoading(false); // ALWAYS RUNS to prevent infinite loading screen
+      }
+
+      // Listen for auth changes
+      const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+        try {
+          if (session?.user) {
+            const profile = await fetchProfile(session.user.id);
+            setUser(profile || { id: session.user.id, role: 'resident', needsProfile: true });
+          } else {
+            setUser(null);
+          }
+        } catch (e) {
+          console.error("Auth state change error:", e);
         }
       });
       subscription = listener.subscription;
@@ -57,6 +70,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password, role) => {
+    if (role === 'admin' && email.toLowerCase() !== 'gekansh2007@gmail.com') {
+      throw new Error("Unauthorized: Only the designated owner (gekansh2007@gmail.com) can be an Admin.");
+    }
+
     // Attempt Login First
     let { data, error } = await supabase.auth.signInWithPassword({ email, password });
     

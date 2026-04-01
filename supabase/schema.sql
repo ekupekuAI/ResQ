@@ -41,6 +41,16 @@ CREATE POLICY "Users can read their own profile"
 ON public.profiles FOR SELECT
 USING (auth.uid() = id);
 
+CREATE POLICY "Admins can read all profiles in their society" 
+ON public.profiles FOR SELECT 
+USING (
+  EXISTS (
+    SELECT 1 FROM public.societies s
+    WHERE s.id = profiles.society_id
+    AND s.admin_id = auth.uid()
+  )
+);
+
 CREATE POLICY "Users can insert their own profile"
 ON public.profiles FOR INSERT
 WITH CHECK (auth.uid() = id);
