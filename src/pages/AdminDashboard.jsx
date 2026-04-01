@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getFeed } from '../services/alerts';
 import { getSocietyById, getSocietyMembers } from '../services/societies';
-import { Users, AlertTriangle, ShieldCheck, Activity, Search } from 'lucide-react';
+import { Users, AlertTriangle, ShieldCheck, Activity, Search, Megaphone } from 'lucide-react';
 import EmergencyBadge from '../components/EmergencyBadge';
 
 export default function AdminDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   const [society, setSociety] = useState({});
   const [alerts, setAlerts] = useState([]);
   const [members, setMembers] = useState([]);
   const [view, setView] = useState('alerts'); // 'alerts' or 'members'
   const [filter, setFilter] = useState('all');
+  const [avgResponse, setAvgResponse] = useState('--');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,7 +26,20 @@ export default function AdminDashboard() {
         const memData = await getSocietyMembers(user.society_id);
         
         if (socData) setSociety(socData);
-        if (feedData) setAlerts(feedData.filter(i => i.feedType === 'alert'));
+        if (feedData) {
+          const alertItems = feedData.filter(i => i.feedType === 'alert');
+          setAlerts(alertItems);
+          
+          // Calculate actual average response time dynamically
+          const resolved = alertItems.filter(a => a.status === 'resolved' && a.resolved_at && a.created_at);
+          if (resolved.length > 0) {
+            const totalMs = resolved.reduce((acc, a) => acc + (new Date(a.resolved_at) - new Date(a.created_at)), 0);
+            const avgMs = totalMs / resolved.length;
+            const mins = Math.floor(avgMs / 60000);
+            if (mins === 0) setAvgResponse('< 1m');
+            else setAvgResponse(`${mins}m`);
+          }
+        }
         if (memData) setMembers(memData);
       }
       setLoading(false);
@@ -35,13 +51,24 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#121212] pt-6 px-4 pb-24 animate-fade-in">
-      <header className="mb-8">
-        <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Admin Dashboard</h1>
-        <p className="text-sm font-medium text-slate-500">Managing {society.name || 'Your Society'}</p>
-        <div className="mt-4 bg-primary/10 text-primary border border-primary/20 px-4 py-2 rounded-xl text-center shadow-sm">
-          <span className="text-xs font-bold uppercase tracking-wider block mb-1">Society Code</span>
-          <span className="font-mono text-xl font-black tracking-widest">{society.society_code || '---'}</span>
+      <header className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Admin Dashboard</h1>
+          <p className="text-sm font-medium text-slate-500">Managing {society.name || 'Your Society'}</p>
+          <div className="mt-4 bg-primary/10 text-primary border border-primary/20 px-4 py-2 rounded-xl text-center shadow-sm w-fit">
+            <span className="text-xs font-bold uppercase tracking-wider block mb-1">Society Code</span>
+            <span className="font-mono text-xl font-black tracking-widest">{society.society_code || '---'}</span>
+          </div>
         </div>
+
+        {/* Real Broadcast Button link */}
+        <button 
+          onClick={() => navigate('/announcements')}
+          className="bg-blue-600 hover:bg-blue-700 active:scale-95 text-white p-3 rounded-2xl shadow-lg shadow-blue-600/30 flex flex-col items-center justify-center gap-1 transition-all"
+        >
+          <Megaphone size={24} />
+          <span className="text-[9px] font-black uppercase tracking-wider">Broadcast</span>
+        </button>
       </header>
 
       {/* Stats Grid */}
@@ -49,7 +76,7 @@ export default function AdminDashboard() {
         <StatCard icon={<Users />} label="Total Members" value={members.length} color="text-blue-500" bg="bg-blue-500/10" />
         <StatCard icon={<AlertTriangle />} label="Total Alerts" value={alerts.length} color="text-red-500" bg="bg-red-500/10" />
         <StatCard icon={<ShieldCheck />} label="Resolved" value={alerts.filter(a => a.status === 'resolved').length} color="text-orange-500" bg="bg-orange-500/10" />
-        <StatCard icon={<Activity />} label="Avg Response" value="--" color="text-green-500" bg="bg-green-500/10" />
+        <StatCard icon={<Activity />} label="Avg Response" value={avgResponse} color="text-green-500" bg="bg-green-500/10" />
       </div>
 
       <div className="flex gap-2 mb-6 border-b border-slate-200 dark:border-slate-800 pb-2">

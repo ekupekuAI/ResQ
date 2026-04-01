@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getFeed, subscribeToFeed, markAlertResolved, respondToAlert } from '../services/alerts';
+import { getSocietyById } from '../services/societies';
 import AlertCard from '../components/AlertCard';
 import AnnouncementCard from '../components/AnnouncementCard';
 import SOSButton from '../components/SOSButton';
@@ -9,10 +10,16 @@ import { ShieldCheck } from 'lucide-react';
 export default function Home() {
   const { user } = useAuth();
   const [feed, setFeed] = useState([]);
+  const [societyName, setSocietyName] = useState('Loading...');
   const [loading, setLoading] = useState(true);
 
   const fetchFeed = async () => {
     if (!user?.society_id) return;
+    
+    // Fetch dynamic society profile
+    const soc = await getSocietyById(user.society_id);
+    if(soc) setSocietyName(soc.name);
+    
     const data = await getFeed(user.society_id);
     setFeed(data);
     setLoading(false);
@@ -41,7 +48,7 @@ export default function Home() {
       <header className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Live Feed</h1>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Sunrise Apartments</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{societyName}</p>
         </div>
         <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center border border-blue-200 dark:border-blue-800">
           <ShieldCheck className="text-blue-600 dark:text-blue-400" size={20} />
