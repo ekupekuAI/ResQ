@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Copy, CheckCircle2, Loader2 } from 'lucide-react';
+import { ShieldCheck, Copy, CheckCircle2, Loader2, LogOut } from 'lucide-react';
 import { createSociety } from '../services/societies';
 import { useAuth } from '../context/AuthContext';
 
 export default function CreateSociety() {
   const navigate = useNavigate();
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, logout } = useAuth();
   
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -39,7 +39,14 @@ export default function CreateSociety() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6 pt-12">
+    <div className="min-h-screen bg-background p-6 pt-12 relative">
+      <button 
+        onClick={logout}
+        className="absolute top-6 right-6 text-sm font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 px-4 py-2 rounded-xl flex items-center gap-2 transition-all"
+      >
+        <LogOut size={16} /> Log Out
+      </button>
+
       <div className="mb-8 bg-green-100 dark:bg-green-900/30 p-4 rounded-full w-fit">
         <ShieldCheck size={36} className="text-green-600 dark:text-green-400" />
       </div>

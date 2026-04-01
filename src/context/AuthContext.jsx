@@ -29,7 +29,19 @@ export function AuthProvider({ children }) {
 
   const syncUserSession = async (sessionUser) => {
     if (sessionUser) {
-      const profile = await fetchProfile(sessionUser.id);
+      let profile = await fetchProfile(sessionUser.id);
+      
+      // AUTO STUCK-ADMIN REPAIR: Hard override for admin account if it got corrupted earlier
+      if (sessionUser.email === 'gekansh2007@gmail.com' && (!profile || profile.role !== 'admin')) {
+        console.log("Auto-repairing admin account role...");
+        await supabase.from('profiles').upsert({
+          id: sessionUser.id,
+          role: 'admin',
+          name: profile?.name || 'Admin'
+        });
+        profile = await fetchProfile(sessionUser.id); // Re-fetch the repaired profile
+      }
+
       // Give them needsProfile: true if they signed up but no profile exists yet
       setUser(profile || { id: sessionUser.id, role: 'resident', needsProfile: true });
     } else {

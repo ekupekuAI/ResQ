@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, ArrowRight, Loader2 } from 'lucide-react';
+import { Building2, ArrowRight, Loader2, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getSocietyByCode } from '../services/societies';
 
 export default function JoinSociety() {
   const navigate = useNavigate();
-  const { updateProfile, user } = useAuth();
+  const { updateProfile, user, logout } = useAuth();
 
   const [code, setCode] = useState('');
   const [flat, setFlat] = useState('');
@@ -49,7 +49,14 @@ export default function JoinSociety() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col p-6 pt-12 animate-slide-up">
+    <div className="min-h-screen bg-background flex flex-col p-6 pt-12 animate-slide-up relative">
+      <button 
+        onClick={logout}
+        className="absolute top-6 right-6 text-sm font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all"
+      >
+        <LogOut size={14} /> Log Out
+      </button>
+
       <div className="mb-8 bg-blue-100 dark:bg-blue-900/30 p-4 rounded-full w-fit">
         <Building2 size={36} className="text-blue-600 dark:text-blue-400" />
       </div>
