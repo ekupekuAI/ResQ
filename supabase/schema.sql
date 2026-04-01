@@ -33,9 +33,13 @@ CREATE TABLE public.profiles (
 -- Enable RLS for profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can only read profiles in their own society"
+CREATE POLICY "Users can read their own profile"
 ON public.profiles FOR SELECT
-USING (society_id = (SELECT society_id FROM public.profiles WHERE id = auth.uid()));
+USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert their own profile"
+ON public.profiles FOR INSERT
+WITH CHECK (auth.uid() = id);
 
 CREATE POLICY "Users can update their own profile"
 ON public.profiles FOR UPDATE
