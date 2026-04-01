@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-// Pages (to be implemented)
+// Pages
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import CreateSociety from './pages/CreateSociety';
@@ -16,20 +16,42 @@ import Profile from './pages/Profile';
 
 import Navbar from './components/Navbar';
 
-// Auth Guard Component
-const ProtectedRoute = ({ children, allowedRoles }) => {
+// Master Protected Route Wrapper
+const ProtectedRoute = ({ children, allowedRoles, requireSociety = true }) => {
   const { user } = useAuth();
   
-  if (!user) return <Navigate to="/auth" />;
+  if (!user) return <Navigate to="/auth" replace />;
   
+  // Force society assignment before they can access standard pages
+  if (requireSociety && !user.society_id) {
+    if (user.role === 'admin') return <Navigate to="/create-society" replace />;
+    return <Navigate to="/join" replace />;
+  }
+  
+  // If they have a society but shouldn't be here (e.g. guard trying to access resident feed)
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" />; // fallback to home if unauthorized
+    return <Navigate to="/" replace />; // This pushes them to RootGuard resolver
   }
   
   return children;
 };
 
-// Route layout with Navbar
+// Root Resolver Route
+const RootGuard = () => {
+  const { user } = useAuth();
+  
+  if (!user) return <LandingPage />;
+  
+  if (!user.society_id) {
+    if (user.role === 'admin') return <Navigate to="/create-society" replace />;
+    return <Navigate to="/join" replace />;
+  }
+  
+  if (user.role === 'guard') return <Navigate to="/guard" replace />;
+  if (user.role === 'admin') return <Navigate to="/admin" replace />;
+  return <Navigate to="/home" replace />;
+};
+
 const Layout = ({ children }) => {
   const { user } = useAuth();
   return (
@@ -37,7 +59,8 @@ const Layout = ({ children }) => {
       <main className="pb-20">
         {children}
       </main>
-      {user && <Navbar />}
+      {/* Navbar only shows if logged in AND they completed society onboarding */}
+      {(user && user.society_id) && <Navbar />}
     </div>
   );
 };
@@ -49,14 +72,14 @@ function AppRoutes() {
     <Router>
       <Layout>
         <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={!user ? <LandingPage /> : <Navigate to={user.role === 'guard' ? '/guard' : '/home'} />} />
-          <Route path="/auth" element={!user ? <AuthPage /> : <Navigate to="/" />} />
+          <Route path="/" element={<RootGuard />} />
+          <Route path="/auth" element={!user ? <AuthPage /> : <Navigate to="/" replace />} />
           
-          {/* Protected Routes */}
-          <Route path="/join" element={<ProtectedRoute><JoinSociety /></ProtectedRoute>} />
-          <Route path="/create-society" element={<ProtectedRoute allowedRoles={['admin']}><CreateSociety /></ProtectedRoute>} />
+          {/* Onboarding Routes - Explicity don't require society_id to view these! */}
+          <Route path="/join" element={<ProtectedRoute requireSociety={false}><JoinSociety /></ProtectedRoute>} />
+          <Route path="/create-society" element={<ProtectedRoute allowedRoles={['admin']} requireSociety={false}><CreateSociety /></ProtectedRoute>} />
           
+          {/* Application Routes - DO require society_id */}
           <Route path="/home" element={<ProtectedRoute allowedRoles={['resident', 'admin']}><Home /></ProtectedRoute>} />
           <Route path="/send-alert" element={<ProtectedRoute allowedRoles={['resident']}><SendAlert /></ProtectedRoute>} />
           <Route path="/safety" element={<ProtectedRoute allowedRoles={['resident']}><SafetyCheck /></ProtectedRoute>} />

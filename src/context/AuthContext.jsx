@@ -18,12 +18,22 @@ export function AuthProvider({ children }) {
       
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
-        return null; // Don't throw, just return null so user gets assigned needsProfile
+        return null;
       }
       return data;
     } catch (e) {
       console.error('Exception fetching profile:', e);
       return null;
+    }
+  };
+
+  const syncUserSession = async (sessionUser) => {
+    if (sessionUser) {
+      const profile = await fetchProfile(sessionUser.id);
+      // Give them needsProfile: true if they signed up but no profile exists yet
+      setUser(profile || { id: sessionUser.id, role: 'resident', needsProfile: true });
+    } else {
+      setUser(null);
     }
   };
 
@@ -33,28 +43,17 @@ export function AuthProvider({ children }) {
     const initAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
-          setUser(profile || { id: session.user.id, role: 'resident', needsProfile: true });
-        } else {
-          setUser(null);
-        }
+        await syncUserSession(session?.user);
       } catch (e) {
         console.error("Init auth failed:", e);
       } finally {
-        setLoading(false); // ALWAYS RUNS to prevent infinite loading screen
+        setLoading(false); // ALWAYS RUNS
       }
 
       // Listen for auth changes
       const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
         try {
-          if (session?.user) {
-            const profile = await fetchProfile(session.user.id);
-            setUser(profile || { id: session.user.id, role: 'resident', needsProfile: true });
-          } else {
-            setUser(null);
-          }
+          await syncUserSession(session?.user);
         } catch (e) {
           console.error("Auth state change error:", e);
         }
@@ -69,43 +68,43 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const login = async (email, password, role) => {
+  const login = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return data;
+  };
+
+  const signUp = async (name, email, password, role) => {
     if (role === 'admin' && email.toLowerCase() !== 'gekansh2007@gmail.com') {
       throw new Error("Unauthorized: Only the designated owner (gekansh2007@gmail.com) can be an Admin.");
     }
 
-    // Attempt Login First
-    let { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name, role } }
+    });
     
-    // If user doesn't exist, sign them up instantly
-    if (error && error.message.includes('Invalid login credentials')) {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
+    if (error) throw error;
 
-      if (signUpError) throw signUpError;
-      data = signUpData;
-
-      // On new user signup, insert a profile based on requested role
-      if (data?.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            { id: data.user.id, name: email.split('@')[0], role: role }
-          ]);
-        if (profileError) throw profileError;
+    // Immediately create their profile in the database
+    if (data?.user) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{ id: data.user.id, name, role }]);
+        
+      if (profileError) {
+        // Fallback for duplicates or RLS
+        if (profileError.code !== '23505') throw profileError; 
       }
-    } else if (error) {
-      throw error;
     }
+    return data;
   };
 
   const logout = async () => {
     await supabase.auth.signOut();
   };
 
-  // Helper to update their profile after joining a society
   const updateProfile = async (updates) => {
     if (!user?.id) return;
     const { data, error } = await supabase
@@ -121,7 +120,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, updateProfile }}>
+    <AuthContext.Provider value={{ user, login, signUp, logout, loading, updateProfile }}>
       {!loading && children}
     </AuthContext.Provider>
   );
