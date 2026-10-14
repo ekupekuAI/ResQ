@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getFeed, subscribeToFeed, markAlertResolved, respondToAlert } from '../services/alerts';
+import { getFeed, subscribeToFeed, initRealtime, markAlertResolved, respondToAlert } from '../services/alerts';
 import { getSocietyById } from '../services/societies';
 import AlertCard from '../components/AlertCard';
 import AnnouncementCard from '../components/AnnouncementCard';
@@ -12,34 +12,46 @@ export default function Home() {
   const [feed, setFeed] = useState([]);
   const [societyName, setSocietyName] = useState('Loading...');
   const [loading, setLoading] = useState(true);
-
-  const fetchFeed = async () => {
-    if (!user?.society_id) return;
-    
-    // Fetch dynamic society profile
-    const soc = await getSocietyById(user.society_id);
-    if(soc) setSocietyName(soc.name);
-    
-    const data = await getFeed(user.society_id);
-    setFeed(data);
-    setLoading(false);
-  };
+  const [error, setError] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    fetchFeed();
-    const unsubscribe = subscribeToFeed(() => {
-      fetchFeed();
-    });
-    return () => unsubscribe();
-  }, [user]);
+    if (!user?.society_id) return;
+    let active = true;
+    // Fetch dynamic society profile + feed
+    Promise.all([getSocietyById(user.society_id), getFeed(user.society_id)])
+      .then(([soc, data]) => {
+        if (!active) return;
+        if (soc) setSocietyName(soc.name);
+        setFeed(data);
+        setError('');
+      })
+      .catch(err => { if (active) setError(err.message || 'Could not load alerts'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [user?.society_id, refreshKey]);
 
-  const handleHelp = async (alertId) => {
-    await respondToAlert(alertId, user.id, 'helping');
+  // Live updates: realtime channel triggers a refetch
+  useEffect(() => {
+    if (!user?.society_id) return;
+    const stopRealtime = initRealtime(user.society_id);
+    const unsubscribe = subscribeToFeed(() => setRefreshKey(k => k + 1));
+    // Fallback poll in case the realtime socket drops
+    const poll = setInterval(() => setRefreshKey(k => k + 1), 30000);
+    return () => { unsubscribe(); stopRealtime(); clearInterval(poll); };
+  }, [user?.society_id]);
+
+  const runAction = async (action) => {
+    try {
+      await action();
+      setRefreshKey(k => k + 1);
+    } catch (err) {
+      setError(`Action failed: ${err.message || 'please try again'}`);
+    }
   };
 
-  const handleResolve = async (alertId) => {
-    await markAlertResolved(alertId);
-  };
+  const handleHelp = (alertId) => runAction(() => respondToAlert(alertId, user.id, 'helping'));
+  const handleResolve = (alertId) => runAction(() => markAlertResolved(alertId));
 
   if (loading) return <div className="p-8 text-center animate-pulse">Loading feed...</div>;
 
@@ -54,6 +66,13 @@ export default function Home() {
           <ShieldCheck className="text-blue-600 dark:text-blue-400" size={20} />
         </div>
       </header>
+
+      {error && (
+        <div role="alert" className="mb-4 p-3 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 text-sm font-bold rounded-xl flex items-center justify-between gap-3">
+          <span className="break-words">{error}</span>
+          <button onClick={() => { setError(''); setRefreshKey(k => k + 1); }} className="shrink-0 underline">Retry</button>
+        </div>
+      )}
 
       <div className="space-y-4 pb-16">
         {feed.map((item) => (
@@ -71,14 +90,15 @@ export default function Home() {
             />
           )
         ))}
-        {feed.length === 0 && (
+        {feed.length === 0 && !error && (
           <div className="text-center py-12 text-slate-400 font-medium">
             No active alerts or announcements.
           </div>
         )}
       </div>
 
-      {user?.role !== 'guard' && <SOSButton />}
+      {/* Only residents can send alerts (the /send-alert route rejects other roles) */}
+      {user?.role === 'resident' && <SOSButton />}
     </div>
   );
 }

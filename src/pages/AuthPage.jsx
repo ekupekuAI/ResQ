@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ShieldAlert, ArrowRight, Loader2 } from 'lucide-react';
 
 export default function AuthPage() {
   const navigate = useNavigate();
   const { login, signUp, user } = useAuth();
-  
+  const [searchParams] = useSearchParams();
+  const roleParam = searchParams.get('role');
+
   const [isLogin, setIsLogin] = useState(false); // Default to Sign Up
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  
-  // Form fields
-  const [role, setRole] = useState('resident');
+  const [infoMsg, setInfoMsg] = useState('');
+
+  // Form fields — role is preselected from the landing page button (?role=...)
+  const [role, setRole] = useState(['resident', 'admin', 'guard'].includes(roleParam) ? roleParam : 'resident');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,12 +38,17 @@ export default function AuthPage() {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
+    setInfoMsg('');
     try {
       if (isLogin) {
         await login(email, password);
       } else {
         if (!name.trim()) throw new Error("Please enter your full name");
-        await signUp(name, email, password, role);
+        const result = await signUp(name, email, password, role);
+        if (result?.needsConfirmation) {
+          setInfoMsg('Account created. Check your email to confirm it, then log in.');
+          setIsLogin(true);
+        }
       }
       // On success, useEffect takes over the routing when context updates the user!
     } catch (err) {
@@ -137,7 +145,13 @@ export default function AuthPage() {
           </div>
         )}
 
-        <button 
+        {infoMsg && (
+          <div className="p-3 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-sm font-bold rounded-xl text-center break-words animate-slide-up">
+            {infoMsg}
+          </div>
+        )}
+
+        <button
           type="submit" 
           disabled={loading || !email || !password || (!isLogin && !name)}
           className="w-full bg-primary hover:bg-blue-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70 mt-6"

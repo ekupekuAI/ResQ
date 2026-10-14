@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { UserCircle, LogOut, Settings, Bell, CircleAlert } from 'lucide-react';
+import { UserCircle, LogOut, Phone } from 'lucide-react';
 import { getSocietyById } from '../services/societies';
 
 export default function Profile() {
@@ -48,11 +48,11 @@ export default function Profile() {
         )}
 
         <div className="bg-white dark:bg-[#1c1c1e] rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
-          <ListItem icon={<Bell size={20} />} label="Notification Settings" />
+          <ListItem icon={<Phone size={20} />} label="Emergency (all services)" number="112" />
           <div className="h-px bg-slate-100 dark:bg-slate-800 ml-12" />
-          <ListItem icon={<Settings size={20} />} label="Account Settings" />
+          <ListItem icon={<Phone size={20} />} label="Fire" number="101" />
           <div className="h-px bg-slate-100 dark:bg-slate-800 ml-12" />
-          <ListItem icon={<CircleAlert size={20} />} label="Help & Support" />
+          <ListItem icon={<Phone size={20} />} label="Ambulance" number="108" />
         </div>
 
         {society.id && (
@@ -76,12 +76,12 @@ export default function Profile() {
   );
 }
 
-function ListItem({ icon, label }) {
+function ListItem({ icon, label, number }) {
   return (
-    <button className="w-full p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left">
+    <a href={`tel:${number}`} className="w-full p-4 flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left">
       <div className="text-slate-400">{icon}</div>
       <span className="font-semibold flex-1">{label}</span>
-      <div className="text-slate-300">❯</div>
-    </button>
+      <span className="font-black text-red-600">{number}</span>
+    </a>
   );
 }

@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { isMockMode } from './lib/supabase';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -94,7 +95,21 @@ function AppRoutes() {
   );
 }
 
+// Shown instead of the app when the Supabase env vars are missing, so nothing fails silently
+const SetupRequired = () => (
+  <div className="min-h-screen max-w-md mx-auto flex flex-col justify-center p-6">
+    <h1 className="text-2xl font-black mb-2 text-red-600">ResQ is not configured</h1>
+    <p className="text-muted-foreground font-medium mb-4">
+      Alerts cannot be sent or received until the Supabase backend is connected.
+    </p>
+    <p className="text-sm font-medium mb-2">Create a <code className="font-mono">.env</code> file (see <code className="font-mono">.env.example</code>) with:</p>
+    <pre className="bg-muted rounded-xl p-4 text-xs font-mono overflow-x-auto">VITE_SUPABASE_URL=...{'\n'}VITE_SUPABASE_ANON_KEY=...</pre>
+    <p className="text-xs text-muted-foreground mt-4">Then restart the dev server (or set them in your hosting provider and redeploy).</p>
+  </div>
+);
+
 function App() {
+  if (isMockMode) return <SetupRequired />;
   return (
     <AuthProvider>
       <AppRoutes />

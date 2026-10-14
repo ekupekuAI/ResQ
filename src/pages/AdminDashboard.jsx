@@ -17,12 +17,16 @@ export default function AdminDashboard() {
   const [filter, setFilter] = useState('all');
   const [avgResponse, setAvgResponse] = useState('--');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function loadData() {
       if (user?.society_id) {
         const socData = await getSocietyById(user.society_id);
-        const feedData = await getFeed(user.society_id);
+        const feedData = await getFeed(user.society_id).catch(err => {
+          setError(err.message || 'Could not load alerts');
+          return null;
+        });
         const memData = await getSocietyMembers(user.society_id);
         
         if (socData) setSociety(socData);
@@ -47,7 +51,7 @@ export default function AdminDashboard() {
     loadData();
   }, [user]);
 
-  if (loading) return null;
+  if (loading) return <div className="p-8 text-center animate-pulse">Loading dashboard...</div>;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#121212] pt-6 px-4 pb-24 animate-fade-in">
@@ -70,6 +74,12 @@ export default function AdminDashboard() {
           <span className="text-[9px] font-black uppercase tracking-wider">Broadcast</span>
         </button>
       </header>
+
+      {error && (
+        <div role="alert" className="mb-6 p-3 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 text-sm font-bold rounded-xl break-words">
+          Could not load alerts: {error}
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 gap-4 mb-8">

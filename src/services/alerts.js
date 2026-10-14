@@ -8,14 +8,14 @@ export const subscribeToFeed = (callback) => {
 };
 
 export const initRealtime = (societyId) => {
-  const channel = supabase.channel('feed-updates')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'alerts', filter: `society_id=eq.${societyId}` }, payload => {
+  const channel = supabase.channel(`feed-updates-${societyId}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'alerts', filter: `society_id=eq.${societyId}` }, () => {
       subscribers.forEach(cb => cb());
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements', filter: `society_id=eq.${societyId}` }, payload => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements', filter: `society_id=eq.${societyId}` }, () => {
       subscribers.forEach(cb => cb());
     })
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'responses' }, payload => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'responses' }, () => {
       subscribers.forEach(cb => cb());
     })
     .subscribe();
@@ -30,7 +30,7 @@ export const getFeed = async (societyId) => {
     .from('alerts')
     .select(`
       *,
-      responses ( id, type )
+      responses ( id, type, user_id )
     `)
     .eq('society_id', societyId)
     .order('created_at', { ascending: false });
@@ -41,9 +41,10 @@ export const getFeed = async (societyId) => {
     .eq('society_id', societyId)
     .order('created_at', { ascending: false });
 
+  // Throw instead of returning [] — an empty feed would look like "no emergencies"
   if (alErr || anErr) {
     console.error('Error fetching feed:', alErr, anErr);
-    return [];
+    throw new Error((alErr || anErr).message || 'Could not load alerts');
   }
 
   const combined = [

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getFeed, subscribeToFeed } from '../services/alerts';
+import { getFeed, subscribeToFeed, initRealtime } from '../services/alerts';
+import { getSocietyById } from '../services/societies';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import EmergencyBadge from '../components/EmergencyBadge';
 import { formatDistanceToNow } from 'date-fns';
@@ -8,16 +9,29 @@ import { formatDistanceToNow } from 'date-fns';
 export default function GuardView() {
   const { user, logout } = useAuth();
   const [feed, setFeed] = useState([]);
+  const [societyName, setSocietyName] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!user?.society_id) return;
+    getSocietyById(user.society_id).then(soc => { if (soc) setSocietyName(soc.name); });
+
     const fetchFeed = async () => {
-      const data = await getFeed(user.society_id);
-      setFeed(data.filter(i => i.feedType === 'alert')); // Guards only see alerts
+      try {
+        const data = await getFeed(user.society_id);
+        setFeed(data.filter(i => i.feedType === 'alert')); // Guards only see alerts
+        setError('');
+      } catch (err) {
+        setError(err.message || 'Could not load alerts');
+      }
     };
     fetchFeed();
+    const stopRealtime = initRealtime(user.society_id);
     const unsubscribe = subscribeToFeed(fetchFeed);
-    return () => unsubscribe();
-  }, [user]);
+    // Fallback poll so the terminal stays current even if the realtime socket drops
+    const poll = setInterval(fetchFeed, 30000);
+    return () => { unsubscribe(); stopRealtime(); clearInterval(poll); };
+  }, [user?.society_id]);
 
   const activeAlerts = feed.filter(a => a.status === 'active');
 
@@ -28,13 +42,19 @@ export default function GuardView() {
           <ShieldCheck className="text-yellow-500" size={32} />
           <div>
             <h1 className="text-xl font-bold tracking-widest uppercase">Guard Terminal</h1>
-            <p className="text-xs text-yellow-500/80">LIVE FEED • {user.society_id}</p>
+            <p className="text-xs text-yellow-500/80">LIVE FEED • {societyName || '...'}</p>
           </div>
         </div>
         <button onClick={logout} className="p-2 bg-red-900/30 text-red-500 rounded-lg hover:bg-red-900/50 transition">
           <LogOut size={24} />
         </button>
       </header>
+
+      {error && (
+        <div role="alert" className="mb-6 bg-yellow-900/30 border-2 border-yellow-500/60 text-yellow-400 p-4 rounded-xl font-bold">
+          FEED OFFLINE — {error}. Retrying automatically.
+        </div>
+      )}
 
       {activeAlerts.length > 0 && (
         <div className="mb-6 bg-red-900/20 border-2 border-red-600/50 text-red-500 p-4 rounded-xl animate-pulse font-bold flex items-center gap-3">
@@ -57,7 +77,7 @@ export default function GuardView() {
                 </div>
               </div>
             </div>
-            {alert.status === 'active' && (
+            {alert.status === 'active' && alert.description && (
               <p className="text-red-400 font-bold text-lg leading-snug border-t border-red-900/30 pt-3 mt-2">
                 {alert.description.toUpperCase()}
               </p>

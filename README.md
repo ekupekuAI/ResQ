@@ -1,3 +1,21 @@
+# ResQ
+
+Instant emergency alerts for gated communities (React + Vite + Supabase). Residents send SOS alerts, neighbours respond, guards get a live terminal, admins manage the society.
+
+## Setup
+
+1. Create a Supabase project and run `supabase/schema.sql` in its SQL editor.
+2. `cp .env.example .env` and fill in:
+
+| Variable | Where to get it |
+|---|---|
+| `VITE_SUPABASE_URL` | Supabase dashboard → Project Settings → API → Project URL |
+| `VITE_SUPABASE_ANON_KEY` | Supabase dashboard → Project Settings → API → anon public key |
+
+3. `npm install` then `npm run dev`. Without these variables, the app shows a "not configured" screen.
+
+---
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

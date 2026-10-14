@@ -12,21 +12,29 @@ export default function SendAlert() {
   const [selectedType, setSelectedType] = useState(null);
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedType) return alert('Please select an emergency type');
-    
+    if (!selectedType) return setErrorMsg('Please select an emergency type');
+
     setLoading(true);
-    await createAlert({
-      type: selectedType,
-      flat: user.flat,
-      description,
-      society_id: user.society_id,
-      sent_by: user.id
-    });
-    setLoading(false);
-    navigate('/home');
+    setErrorMsg('');
+    try {
+      await createAlert({
+        type: selectedType,
+        flat: user.flat || 'Unknown', // flat is required by the DB; never block an SOS on it
+        description: description.trim() || null,
+        society_id: user.society_id,
+        sent_by: user.id
+      });
+      navigate('/home');
+    } catch (err) {
+      // Fail loudly: the alert was NOT delivered
+      setErrorMsg(`SOS NOT SENT: ${err.message || 'network error'}. Try again or call 112.`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -86,8 +94,14 @@ export default function SendAlert() {
           />
         </div>
 
-        <button 
-          type="submit" 
+        {errorMsg && (
+          <div role="alert" className="p-3 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 text-sm font-bold rounded-xl text-center break-words">
+            {errorMsg}
+          </div>
+        )}
+
+        <button
+          type="submit"
           disabled={loading || !selectedType}
           className={`
             w-full mb-8 py-5 rounded-2xl flex items-center justify-center gap-2 font-black text-lg transition-all

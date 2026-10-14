@@ -42,6 +42,19 @@ export function AuthProvider({ children }) {
         profile = await fetchProfile(sessionUser.id); // Re-fetch the repaired profile
       }
 
+      // Profile row is missing (e.g. sign-up needed email confirmation, so the insert had no session yet).
+      // Create it now from the sign-up metadata so onboarding updates have a row to write to.
+      if (!profile) {
+        const meta = sessionUser.user_metadata || {};
+        const { error: insertError } = await supabase.from('profiles').insert([{
+          id: sessionUser.id,
+          name: meta.name || sessionUser.email?.split('@')[0] || 'Resident',
+          role: ['resident', 'admin', 'guard'].includes(meta.role) ? meta.role : 'resident'
+        }]);
+        if (insertError && insertError.code !== '23505') console.error('Error creating profile:', insertError);
+        profile = await fetchProfile(sessionUser.id);
+      }
+
       // Give them needsProfile: true if they signed up but no profile exists yet
       setUser(profile || { id: sessionUser.id, role: 'resident', needsProfile: true });
     } else {
@@ -51,7 +64,11 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let subscription;
-    
+    if (!supabase) {
+      setLoading(false); // Not configured — App renders the setup screen
+      return;
+    }
+
     const initAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -63,12 +80,13 @@ export function AuthProvider({ children }) {
       }
 
       // Listen for auth changes
-      const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
-        try {
-          await syncUserSession(session?.user);
-        } catch (e) {
-          console.error("Auth state change error:", e);
-        }
+      // Supabase calls made directly inside this callback can deadlock the auth client,
+      // so the profile sync is deferred to the next tick.
+      const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'INITIAL_SESSION') return; // already handled by getSession above
+        setTimeout(() => {
+          syncUserSession(session?.user).catch(e => console.error("Auth state change error:", e));
+        }, 0);
       });
       subscription = listener.subscription;
     };
@@ -99,6 +117,12 @@ export function AuthProvider({ children }) {
     
     if (error) throw error;
 
+    // Email confirmation is on: no session yet, so RLS would reject the profile insert.
+    // The profile is created on first login instead (see syncUserSession).
+    if (data?.user && !data.session) {
+      return { ...data, needsConfirmation: true };
+    }
+
     // Immediately create their profile in the database
     if (data?.user) {
       const { error: profileError } = await supabase
@@ -127,15 +151,20 @@ export function AuthProvider({ children }) {
       .maybeSingle();
       
     if (error) throw error;
+    // No row updated means the profile is missing — fail loudly instead of silently logging the user out
+    if (!data) throw new Error('Your profile could not be found. Please log out and log in again.');
     setUser(data);
     return data;
   };
 
   return (
     <AuthContext.Provider value={{ user, login, signUp, logout, loading, updateProfile }}>
-      {!loading && children}
+      {loading
+        ? <div className="min-h-screen flex items-center justify-center text-muted-foreground font-medium animate-pulse">Loading ResQ...</div>
+        : children}
     </AuthContext.Provider>
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

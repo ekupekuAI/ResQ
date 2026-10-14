@@ -141,3 +141,6 @@ WITH CHECK (EXISTS(
   SELECT 1 FROM public.profiles 
   WHERE id = auth.uid() AND role = 'admin' AND society_id = announcements.society_id
 ));
+
+-- Enable realtime so feeds update live (Supabase only broadcasts tables in this publication)
+ALTER PUBLICATION supabase_realtime ADD TABLE public.alerts, public.announcements, public.responses;

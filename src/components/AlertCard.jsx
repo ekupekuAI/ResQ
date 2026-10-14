@@ -1,5 +1,5 @@
 import EmergencyBadge from './EmergencyBadge';
-import { formatDistanceToNow } from 'date-fns'; // need to install this or write custom
+import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 import { Users, CheckCircle } from 'lucide-react';
 
@@ -8,6 +8,7 @@ export default function AlertCard({ alert, onHelp, onResolve }) {
   const isCreator = user?.id === alert.sent_by;
   const isAdmin = user?.role === 'admin';
   const isResolved = alert.status === 'resolved';
+  const isHelping = alert.responses?.some(r => r.user_id === user?.id && r.type === 'helping');
 
   return (
     <div className={`
@@ -26,8 +27,7 @@ export default function AlertCard({ alert, onHelp, onResolve }) {
           <div className="text-right">
             <span className="block font-bold text-lg dark:text-white">Flat {alert.flat}</span>
             <span className="text-xs text-muted-foreground">
-              {/* Fallback to simple date parsing if date-fns not installed yet */}
-              {new Date(alert.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}
             </span>
           </div>
         </div>
@@ -43,7 +43,13 @@ export default function AlertCard({ alert, onHelp, onResolve }) {
           </div>
 
           <div className="flex gap-2">
-            {!isResolved && !isCreator && user?.role !== 'guard' && (
+            {!isResolved && !isCreator && isHelping && (
+              <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-bold flex items-center">
+                You're coming
+              </span>
+            )}
+
+            {!isResolved && !isCreator && !isHelping && user?.role !== 'guard' && (
               <button 
                 onClick={() => onHelp(alert.id)}
                 className="px-4 py-2 bg-primary text-white text-sm font-bold rounded-full shadow-sm hover:opacity-90 active:scale-95 transition-all"
