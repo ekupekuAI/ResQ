@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 340" width="1200" height="340" role="img" aria-labelledby="t d">
+  <title id="t">ResQ</title>
+  <desc id="d">ResQ — one tap, life saved. Instant emergency alerts for gated communities.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1a0b16"/>
+      <stop offset="0.55" stop-color="#14122a"/>
+      <stop offset="1" stop-color="#071433"/>
+    </linearGradient>
+    <radialGradient id="glowRed" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#dc2626" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#dc2626" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowBlue" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#2563eb" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#2563eb" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#9ca3af"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ef4444"/>
+      <stop offset="0.5" stop-color="#fb923c"/>
+      <stop offset="1" stop-color="#ef4444"/>
+    </linearGradient>
+    <clipPath id="frame"><rect width="1200" height="340" rx="24"/></clipPath>
+  </defs>
+
+  <style>
+    .glow-r { animation: drift 9s ease-in-out infinite alternate; transform-origin: 980px 60px; }
+    .glow-b { animation: drift 11s ease-in-out infinite alternate-reverse; transform-origin: 180px 320px; }
+    .ring { fill: none; stroke: #ef4444; stroke-width: 3; transform-box: fill-box; transform-origin: center; opacity: 0; animation: ripple 2.4s cubic-bezier(.2,.6,.35,1) infinite; }
+    .ring.r2 { animation-delay: .8s; }
+    .ring.r3 { animation-delay: 1.6s; }
+    .sos { transform-box: fill-box; transform-origin: center; animation: beat 2.4s ease-in-out infinite; }
+    .fade { opacity: 0; animation: fadeUp .9s ease-out forwards; }
+    .f2 { animation-delay: .25s; } .f3 { animation-delay: .5s; } .f4 { animation-delay: .75s; }
+    .dot { animation: blink 1.2s steps(2, start) infinite; }
+    @keyframes ripple { 0% { transform: scale(.55); opacity: .9; } 80%, 100% { transform: scale(1.6); opacity: 0; } }
+    @keyframes beat { 0%, 100% { transform: scale(1); } 12% { transform: scale(1.06); } 24% { transform: scale(1); } }
+    @keyframes drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(-60px, 30px) scale(1.15); } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes blink { to { visibility: hidden; } }
+    @media (prefers-reduced-motion: reduce) {
+      .glow-r, .glow-b, .ring, .sos, .dot { animation: none; }
+      .ring { opacity: .35; transform: scale(1.15); }
+      .ring.r2, .ring.r3 { opacity: 0; }
+      .fade { animation: none; opacity: 1; }
+    }
+  </style>
+
+  <g clip-path="url(#frame)">
+    <rect width="1200" height="340" fill="url(#bg)"/>
+    <circle class="glow-r" cx="980" cy="60" r="320" fill="url(#glowRed)"/>
+    <circle class="glow-b" cx="180" cy="320" r="300" fill="url(#glowBlue)"/>
+
+    <g transform="translate(70 0)">
+    <!-- SOS beacon -->
+    <g transform="translate(250 170)">
+      <circle class="ring" r="78"/>
+      <circle class="ring r2" r="78"/>
+      <circle class="ring r3" r="78"/>
+      <g class="sos">
+        <circle r="74" fill="#dc2626"/>
+        <circle r="74" fill="none" stroke="#fca5a5" stroke-opacity=".35" stroke-width="2"/>
+        <path d="M0 -38 L34 22 H-34 Z" fill="none" stroke="#fff" stroke-width="7" stroke-linejoin="round"/>
+        <line x1="0" y1="-14" x2="0" y2="4" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="0" cy="14" r="3.6" fill="#fff"/>
+        <text y="52" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="17" font-weight="900" letter-spacing="3" fill="#fff">SOS</text>
+      </g>
+    </g>
+
+    <!-- Wordmark -->
+    <g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+      <text class="fade" x="410" y="160" font-size="104" font-weight="900" letter-spacing="-3" fill="url(#title)">ResQ</text>
+      <text class="fade f2" x="414" y="208" font-size="30" font-weight="800" letter-spacing="5" fill="url(#sheen)">ONE TAP. LIFE SAVED.</text>
+      <text class="fade f3" x="414" y="252" font-size="21" font-weight="500" fill="#9ca3af">Instant emergency alerts for gated communities.</text>
+      <g class="fade f4">
+        <rect x="414" y="276" width="168" height="34" rx="17" fill="#ffffff" fill-opacity=".06" stroke="#ffffff" stroke-opacity=".12"/>
+        <circle class="dot" cx="436" cy="293" r="6" fill="#ef4444"/>
+        <text x="452" y="299" font-size="15" font-weight="700" letter-spacing="2" fill="#e5e7eb">LIVE FEED</text>
+      </g>
+    </g>
+    </g>
+  </g>
+</svg>
